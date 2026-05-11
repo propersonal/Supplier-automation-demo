@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Автоматизація роботи з постачальниками</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #E8C96A;
+    --gold-dim: #8B6B2A;
+    --bg: #080808;
+    --bg2: #111111;
+    --bg3: #1A1A1A;
+    --bg4: #222222;
+    --white: #FFFFFF;
+    --gray: #888888;
+    --gray-light: #BBBBBB;
+    --red: #C0392B;
+    --green: #27AE60;
+    --border: #2A2A2A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  .nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(8,8,8,0.95);
+    backdrop-filter: blur(10px);
+    z-index: 100;
+  }
+
+  .nav-logo {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 2px;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg3);
+    padding: 4px;
+    border-radius: 8px;
+  }
+
+  .nav-tab {
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--gray);
+    border: none;
+    background: none;
+    letter-spacing: 0.5px;
+  }
+
+  .nav-tab.active {
+    background: var(--gold);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .nav-tab:hover:not(.active) { color: var(--white); }
+
+  /* SCREENS */
+  .screen { display: none; padding: 40px; max-width: 1200px; margin: 0 auto; }
+  .screen.active { display: block; }
+
+  /* ═══════════════════════════════════════ */
+  /* SCREEN 1: PROCESS ANIMATION            */
+  /* ═══════════════════════════════════════ */
+
+  .process-header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .process-header h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 10px;
+    letter-spacing: -0.5px;
+  }
+
+  .process-header h1 span { color: var(--gold); }
+
+  .process-header p {
+    font-size: 14px;
+    color: var(--gray);
+    letter-spacing: 0.3px;
+  }
+
+  .process-flow {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    margin-bottom: 48px;
+    position: relative;
+  }
+
+  .process-node {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    opacity: 0.2;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    transform: translateY(10px);
+  }
+
+  .process-node.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .process-node.done {
+    opacity: 0.7;
+    transform: translateY(0);
+  }
+
+  .node-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background: var(--bg3);
+    margin-bottom: 14px;
+    position: relative;
+    transition: all 0.4s;
+  }
+
+  .process-node.active .node-icon {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.1);
+    box-shadow: 0 0 24px rgba(201, 168, 76, 0.25);
+  }
+
+  .process-node.done .node-icon {
+    border-color: var(--green);
+    background: rgba(39, 174, 96, 0.1);
+  }
+
+  .node-check {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    background: var(--green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .process-node.done .node-check { opacity: 1; }
+
+  .node-label {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--white);
+    text-align: center;
+    margin-bottom: 6px;
+    letter-spacing: 0.3px;
+  }
+
+  .node-desc {
+    font-size: 11px;
+    color: var(--gray);
+    text-align: center;
+    line-height: 1.5;
+    max-width: 120px;
+  }
+
+  .process-node.active .node-desc { color: var(--gray-light); }
+
+  .connector {
+    flex: 0 0 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 34px;
+    position: relative;
+  }
+
+  .connector-line {
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .connector-fill {
+    position: absolute;
+    left: 0; top: 0;
+    height: 100%;
+    width: 0%;
+    background: var(--gold);
+    transition: width 0.6s ease;
+  }
+
+  .connector.flowing .connector-fill { width: 100%; }
+
+  .connector-arrow {
+    position: absolute;
+    right: -1px;
+    width: 8px;
+    height: 8px;
+    border-top: 2px solid var(--border);
+    border-right: 2px solid var(--border);
+    transform: rotate(45deg);
+    transition: border-color 0.3s;
+  }
+
+  .connector.flowing .connector-arrow { border-color: var(--gold); }
+
+  /* Step detail panel */
+  .step-panel {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    min-height: 180px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .step-panel.gold-border { border-color: var(--gold); }
+
+  .step-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.5s ease;
+  }
+
+  .step-panel.gold-border::before { transform: scaleX(1); }
+
+  .step-content {
+    display: none;
+    animation: fadeSlideIn 0.4s ease forwards;
+  }
+
+  .step-content.active { display: flex; gap: 32px; align-items: flex-start; }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .step-visual {
+    flex: 0 0 200px;
+    background: var(--bg4);
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    min-height: 120px;
+  }
+
+  .step-info { flex: 1; }
+
+  .step-tag {
+    display: inline-block;
+    background: rgba(201, 168, 76, 0.15);
+    color: var(--gold);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+
+  .step-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+  }
+
+  .step-text {
+    font-size: 13px;
+    color: var(--gray-light);
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+
+  .step-highlight {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(201, 168, 76, 0.08);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+
+  .step-highlight-icon { font-size: 18px; }
+
+  .step-highlight-text {
+    font-size: 12px;
+    color: var(--gold);
+    font-weight: 500;
+  }
+
+  /* Email visual */
+  .email-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .email-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg3);
+    border-radius: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--gray-light);
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.3s;
+  }
+
+  .email-item.appear {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .email-item .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    flex-shrink: 0;
+  }
+
+  /* Processing visual */
+  .processing-bars { display: flex; flex-direction: column; gap: 8px; }
+
+  .proc-bar-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .proc-bar-label {
+    font-size: 10px;
+    color: var(--gray);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .proc-bar-track {
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .proc-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0%;
+    transition: width 1s ease;
+  }
+
+  .proc-bar-fill.gold { background: var(--gold); }
+  .proc-bar-fill.green { background: var(--green); }
+  .proc-bar-fill.blue { background: #3498DB; }
+
+  /* Update visual */
+  .update-rows { display: flex; flex-direction: column; gap: 6px; }
+
+  .update-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    opacity: 0;
+    transition: all 0.3s;
+  }
+
+  .update-row.appear { opacity: 1; }
+
+  .update-row .old-price {
+    color: var(--red);
+    text-decoration: line-through;
+    font-size: 10px;
+  }
+
+  .update-row .new-price {
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .update-row .item-name { color: var(--gray-light); flex: 1; margin: 0 8px; }
+
+  /* Notification visual */
+  .notif-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--bg3);
+    border-radius: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.4s;
+  }
+
+  .notif-item.appear {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .notif-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  .notif-body { flex: 1; }
+
+  .notif-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 3px;
+  }
+
+  .notif-sub { font-size: 10px; color: var(--gray); }
+
+  .notif-time {
+    font-size: 10px;
+    color: var(--gray);
+    flex-shrink: 0;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  .btn {
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    letter-spacing: 0.3px;
+  }
+
+  .btn-gold {
+    background: var(--gold);
+    color: var(--bg);
+  }
+
+  .btn-gold:hover { background: var(--gold-light); transform: translateY(-1px); }
+  .btn-gold:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--white);
+    border: 1px solid var(--border);
+  }
+
+  .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+  .step-counter {
+    font-size: 12px;
+    color: var(--gray);
+    font-family: 'Unbounded', sans-serif;
+  }
+
+  .step-counter span { color: var(--gold); font-weight: 600; }
+
+  /* ═══════════════════════════════════════ */
+  /* SCREEN 2: DASHBOARD                    */
+  /* ═══════════════════════════════════════ */
+
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  .dashboard-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .dashboard-title span { color: var(--gold); }
+
+  .dashboard-meta {
+    font-size: 12px;
+    color: var(--gray);
+    margin-top: 4px;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(39, 174, 96, 0.1);
+    border: 1px solid rgba(39, 174, 96, 0.3);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 500;
+  }
+
+  .live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* KPI row */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .kpi-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  .kpi-card.gold::before { background: var(--gold); }
+  .kpi-card.green::before { background: var(--green); }
+  .kpi-card.blue::before { background: #3498DB; }
+  .kpi-card.red::before { background: var(--red); }
+
+  .kpi-label {
+    font-size: 11px;
+    color: var(--gray);
+    margin-bottom: 8px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  .kpi-value {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+
+  .kpi-card.gold .kpi-value { color: var(--gold); }
+  .kpi-card.green .kpi-value { color: var(--green); }
+
+  .kpi-change {
+    font-size: 11px;
+    color: var(--gray);
+  }
+
+  .kpi-change.up { color: var(--green); }
+  .kpi-change.down { color: var(--red); }
+
+  /* Main grid */
+  .dash-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+  }
+
+  .dash-panel {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .panel-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--white);
+    letter-spacing: 0.5px;
+  }
+
+  .panel-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .panel-badge.gold { background: rgba(201, 168, 76, 0.15); color: var(--gold); }
+  .panel-badge.green { background: rgba(39, 174, 96, 0.15); color: var(--green); }
+  .panel-badge.red { background: rgba(192, 57, 43, 0.15); color: var(--red); }
+
+  /* Price feed */
+  .price-feed {
+    padding: 12px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .price-feed::-webkit-scrollbar { width: 4px; }
+  .price-feed::-webkit-scrollbar-track { background: var(--bg); }
+  .price-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .price-row {
+    display: grid;
+    grid-template-columns: 1fr 90px 90px 80px;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 12px;
+    border: 1px solid transparent;
+    transition: all 0.3s;
+  }
+
+  .price-row.new-update {
+    background: rgba(201, 168, 76, 0.08);
+    border-color: rgba(201, 168, 76, 0.2);
+    animation: rowFlash 2s ease;
+  }
+
+  @keyframes rowFlash {
+    0% { background: rgba(201, 168, 76, 0.25); }
+    100% { background: rgba(201, 168, 76, 0.08); }
+  }
+
+  .price-row:hover { background: var(--bg4); }
+
+  .price-supplier { color: var(--gray-light); font-weight: 500; }
+  .price-product { color: var(--gray); font-size: 11px; }
+  .price-old { color: var(--red); text-decoration: line-through; font-size: 11px; }
+  .price-new { color: var(--green); font-weight: 600; }
+
+  .price-status {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .price-status.updated { color: var(--green); }
+  .price-status.pending { color: var(--gold); }
+
+  .price-header {
+    display: grid;
+    grid-template-columns: 1fr 90px 90px 80px;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 10px;
+    color: var(--gray);
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+
+  /* Notifications panel */
+  .notifs-feed {
+    padding: 12px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .notifs-feed::-webkit-scrollbar { width: 4px; }
+  .notifs-feed::-webkit-scrollbar-track { background: var(--bg); }
+  .notifs-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .notif-card {
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    transition: all 0.3s;
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  .notif-card.show {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .notif-card.type-update { background: rgba(39, 174, 96, 0.06); border-color: rgba(39, 174, 96, 0.2); }
+  .notif-card.type-warning { background: rgba(201, 168, 76, 0.06); border-color: rgba(201, 168, 76, 0.2); }
+  .notif-card.type-info { background: rgba(52, 152, 219, 0.06); border-color: rgba(52, 152, 219, 0.2); }
+  .notif-card.type-error { background: rgba(192, 57, 43, 0.06); border-color: rgba(192, 57, 43, 0.2); }
+
+  .notif-card-icon { font-size: 18px; flex-shrink: 0; }
+
+  .notif-card-body { flex: 1; }
+
+  .notif-card-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 3px;
+  }
+
+  .notif-card-text { font-size: 11px; color: var(--gray); line-height: 1.5; }
+
+  .notif-card-time {
+    font-size: 10px;
+    color: var(--gray);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* Bottom panel */
+  .dash-bottom {
+    margin-top: 20px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .summary-stats {
+    display: flex;
+    gap: 40px;
+  }
+
+  .summary-stat { text-align: center; }
+
+  .summary-stat-value {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--gold);
+  }
+
+  .summary-stat-label {
+    font-size: 11px;
+    color: var(--gray);
+    margin-top: 4px;
+  }
+
+  .dash-action {
+    display: flex;
+    gap: 12px;
+  }
+
+  .time-display {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 13px;
+    color: var(--gray);
+  }
+
+  .time-display span { color: var(--gold); }
+
+  /* Supplier counter */
+  .supplier-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 12px;
+  }
+
+  .sup-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    color: var(--gray);
+    background: var(--bg4);
+    transition: all 0.3s;
+  }
+
+  .sup-badge.active-update {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(201, 168, 76, 0.1);
+  }
+
+  /* Reset button */
+  .dash-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .speed-label { font-size: 12px; color: var(--gray); }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">PRO PERSONAL AGENCY</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showScreen('process')">① Як це працює</button>
+    <button class="nav-tab" onclick="showScreen('dashboard')">② Дашборд керівника</button>
+  </div>
+  <div style="font-size:12px;color:var(--gray);">Автоматизація постачальників</div>
+</nav>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCREEN 1: PROCESS                      -->
+<!-- ═══════════════════════════════════════ -->
+<div class="screen active" id="screen-process">
+
+  <div class="process-header">
+    <h1>Як система <span>автоматично</span> обробляє прайси</h1>
+    <p>Від отримання прайсу від постачальника — до оновлення цін у продажників</p>
+  </div>
+
+  <!-- Flow nodes -->
+  <div class="process-flow">
+
+    <div class="process-node" id="node-0">
+      <div class="node-icon">📦<div class="node-check">✓</div></div>
+      <div class="node-label">Постачальник</div>
+      <div class="node-desc">Надсилає новий прайс на email</div>
+    </div>
+
+    <div class="connector" id="conn-0">
+      <div class="connector-line"><div class="connector-fill"></div></div>
+      <div class="connector-arrow"></div>
+    </div>
+
+    <div class="process-node" id="node-1">
+      <div class="node-icon">📧<div class="node-check">✓</div></div>
+      <div class="node-label">Отримання</div>
+      <div class="node-desc">Система моніторить пошту і забирає файл</div>
+    </div>
+
+    <div class="connector" id="conn-1">
+      <div class="connector-line"><div class="connector-fill"></div></div>
+      <div class="connector-arrow"></div>
+    </div>
+
+    <div class="process-node" id="node-2">
+      <div class="node-icon">🧠<div class="node-check">✓</div></div>
+      <div class="node-label">Розпізнавання</div>
+      <div class="node-desc">Зчитує структуру і витягує дані</div>
+    </div>
+
+    <div class="connector" id="conn-2">
+      <div class="connector-line"><div class="connector-fill"></div></div>
+      <div class="connector-arrow"></div>
+    </div>
+
+    <div class="process-node" id="node-3">
+      <div class="node-icon">⚡<div class="node-check">✓</div></div>
+      <div class="node-label">Оновлення</div>
+      <div class="node-desc">Нові ціни і наявність в системі</div>
+    </div>
+
+    <div class="connector" id="conn-3">
+      <div class="connector-line"><div class="connector-fill"></div></div>
+      <div class="connector-arrow"></div>
+    </div>
+
+    <div class="process-node" id="node-4">
+      <div class="node-icon">💬<div class="node-check">✓</div></div>
+      <div class="node-label">Сповіщення</div>
+      <div class="node-desc">Команда отримує повідомлення в Telegram</div>
+    </div>
+
+    <div class="connector" id="conn-4">
+      <div class="connector-line"><div class="connector-fill"></div></div>
+      <div class="connector-arrow"></div>
+    </div>
+
+    <div class="process-node" id="node-5">
+      <div class="node-icon">✅<div class="node-check">✓</div></div>
+      <div class="node-label">Готово</div>
+      <div class="node-desc">Продажники бачать актуальні ціни</div>
+    </div>
+
+  </div>
+
+  <!-- Detail panels -->
+  <div class="step-panel" id="step-panel">
+
+    <!-- Step 0: Supplier -->
+    <div class="step-content" id="step-0">
+      <div class="step-visual">
+        <div style="font-size:11px;color:var(--gray);margin-bottom:10px;font-weight:600;letter-spacing:1px;">ВХІДНА ПОШТА</div>
+        <div class="email-list">
+          <div class="email-item" id="email-0">
+            <div class="dot"></div>
+            <span>Меблі Прем'єр · прайс_листопад.xlsx</span>
+          </div>
+          <div class="email-item" id="email-1">
+            <div class="dot"></div>
+            <span>ТОВ Форест · price_update.xlsx</span>
+          </div>
+          <div class="email-item" id="email-2">
+            <div class="dot"></div>
+            <span>Євростиль · нові_ціни_2024.xlsx</span>
+          </div>
+          <div class="email-item" id="email-3">
+            <div class="dot" style="background:var(--gray)"></div>
+            <span style="color:var(--gray)">+ 97 інших постачальників...</span>
+          </div>
+        </div>
+      </div>
+      <div class="step-info">
+        <div class="step-tag">КРОК 1 · ПОСТАЧАЛЬНИК</div>
+        <div class="step-title">Прайс надійшов на email</div>
+        <div class="step-text">Постачальник надсилає оновлений прайс-лист у звичному форматі Excel. Кожен постачальник має свою структуру файлу — хтось називає колонку "Ціна грн", хтось "Price UAH", хтось "Вартість". Раніше менеджер відкривав кожен файл вручну.</div>
+        <div class="step-highlight">
+          <div class="step-highlight-icon">⏰</div>
+          <div class="step-highlight-text">Раніше менеджер витрачав 20-40 хв на кожен прайс. При 100 постачальниках — це тижні ручної роботи.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1: Receive -->
+    <div class="step-content" id="step-1">
+      <div class="step-visual">
+        <div style="font-size:11px;color:var(--gray);margin-bottom:10px;font-weight:600;letter-spacing:1px;">МОНІТОРИНГ</div>
+        <div class="processing-bars">
+          <div class="proc-bar-wrap">
+            <div class="proc-bar-label"><span>Сканування пошти</span><span id="bar-pct-0">0%</span></div>
+            <div class="proc-bar-track"><div class="proc-bar-fill gold" id="bar-0"></div></div>
+          </div>
+          <div class="proc-bar-wrap" style="margin-top:6px">
+            <div class="proc-bar-label"><span>Виявлено нових файлів</span><span style="color:var(--gold)">3</span></div>
+            <div class="proc-bar-track"><div class="proc-bar-fill green" id="bar-1"></div></div>
+          </div>
+          <div style="margin-top:12px;font-size:11px;color:var(--gray)">
+            ⚡ Автоматично без участі людини
+          </div>
+        </div>
+      </div>
+      <div class="step-info">
+        <div class="step-tag">КРОК 2 · ОТРИМАННЯ</div>
+        <div class="step-title">Система сама забирає файли</div>
+        <div class="step-text">Система постійно моніторить поштову скриньку закупівлі. Щойно приходить лист з Excel-вкладенням від відомого постачальника — вона автоматично його забирає і починає обробку. Жодної участі менеджера.</div>
+        <div class="step-highlight">
+          <div class="step-highlight-icon">🚀</div>
+          <div class="step-highlight-text">Реакція на новий прайс — миттєва. Система не спить, не йде на обід, не забуває перевірити пошту.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Parse -->
+    <div class="step-content" id="step-2">
+      <div class="step-visual">
+        <div style="font-size:11px;color:var(--gray);margin-bottom:10px;font-weight:600;letter-spacing:1px;">РОЗПІЗНАВАННЯ СТРУКТУРИ</div>
+        <div style="background:var(--bg);border-radius:6px;padding:10px;font-size:10px;font-family:monospace;color:var(--gold)">
+          <div style="color:var(--gray);margin-bottom:6px">Постачальник: Меблі Прем'єр</div>
+          <div>→ Артикул: колонка A</div>
+          <div>→ Назва: колонка B</div>
+          <div>→ Ціна: колонка D</div>
+          <div>→ Наявність: колонка F</div>
+          <div style="margin-top:8px;color:var(--green)">✓ Знайдено 847 позицій</div>
+        </div>
+      </div>
+      <div class="step-info">
+        <div class="step-tag">КРОК 3 · РОЗПІЗНАВАННЯ</div>
+        <div class="step-title">Зчитує структуру кожного файлу</div>
+        <div class="step-text">Для кожного постачальника один раз налаштовується "мапінг" — де в їхньому файлі знаходиться артикул, ціна, наявність. Далі система сама знає як читати файли кожного постачальника і витягує потрібні дані автоматично.</div>
+        <div class="step-highlight">
+          <div class="step-highlight-icon">🎯</div>
+          <div class="step-highlight-text">Навіть якщо постачальник змінив структуру файлу — система це виявить і повідомить менеджера.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Update -->
+    <div class="step-content" id="step-3">
+      <div class="step-visual">
+        <div style="font-size:11px;color:var(--gray);margin-bottom:8px;font-weight:600;letter-spacing:1px;">ОНОВЛЕННЯ ЦІН</div>
+        <div class="update-rows">
+          <div class="update-row" id="upd-0">
+            <span class="old-price">8 200₴</span>
+            <span class="item-name">Диван Комфорт 3М</span>
+            <span class="new-price">8 950₴</span>
+          </div>
+          <div class="update-row" id="upd-1">
+            <span class="old-price">12 400₴</span>
+            <span class="item-name">Ліжко Еліт 160</span>
+            <span class="new-price">13 100₴</span>
+          </div>
+          <div class="update-row" id="upd-2">
+            <span class="old-price">3 800₴</span>
+            <span class="item-name">Крісло Релакс</span>
+            <span class="new-price" style="color:var(--red)">знято з вир.</span>
+          </div>
+          <div style="font-size:10px;color:var(--gray);margin-top:6px;text-align:center">+ 844 позиції оновлено автоматично</div>
+        </div>
+      </div>
+      <div class="step-info">
+        <div class="step-tag">КРОК 4 · ОНОВЛЕННЯ</div>
+        <div class="step-title">Ціни змінюються за 15 хвилин</div>
+        <div class="step-text">Нові ціни, зміни наявності, зняті позиції — все це автоматично оновлюється в системі обліку. Продажники бачать актуальну інформацію одразу після завершення обробки прайсу.</div>
+        <div class="step-highlight">
+          <div class="step-highlight-icon">⚡</div>
+          <div class="step-highlight-text">Раніше — від 2 до 7 днів до оновлення. Тепер — 15 хвилин незалежно від обсягу прайсу.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Notify -->
+    <div class="step-content" id="step-4">
+      <div class="step-visual">
+        <div style="font-size:11px;color:var(--gray);margin-bottom:8px;font-weight:600;letter-spacing:1px;">TELEGRAM СПОВІЩЕННЯ</div>
+        <div class="notif-list">
+          <div class="notif-item" id="notif-0">
+            <div class="notif-icon">✅</div>
+            <div class="notif-body">
+              <div class="notif-title">Прайс оброблено</div>
+              <div class="notif-sub">Меблі Прем'єр · 847 позицій · 15 хв</div>
+            </div>
+            <div class="notif-time">зараз</div>
+          </div>
+          <div class="notif-item" id="notif-1">
+            <div class="notif-icon">⚠️</div>
+            <div class="notif-body">
+              <div class="notif-title">Знято з виробництва</div>
+              <div class="notif-sub">Крісло Релакс · замовлення неможливі</div>
+            </div>
+            <div class="notif-time">зараз</div>
+          </div>
+        </div>
+      </div>
+      <div class="step-info">
+        <div class="step-tag">КРОК 5 · СПОВІЩЕННЯ</div>
+        <div class="step-title">Команда знає одразу</div>
+        <div class="step-text">Після обробки кожного прайсу менеджер закупівлі і керівник отримують повідомлення в Telegram: скільки позицій оновлено, що знято з виробництва, які ціни змінились суттєво. Нічого не губиться.</div>
+        <div class="step-highlight">
+          <div class="step-highlight-icon">💬</div>
+          <div class="step-highlight-text">Менеджер закупівлі більше не є "пляшковим горлечком" між постачальником і продажниками.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: Done -->
+    <div class="step-content" id="step-5">
+      <div class="step-visual" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:120px;gap:12px;">
+        <div style="font-size:48px">🎯</div>
+        <div style="font-size:12px;color:var(--green);font-weight:600;text-align:center">Процес завершено<br>за 15 хвилин</div>
+      </div>
+      <div class="step-info">
+        <div class="step-tag">РЕЗУЛЬТАТ</div>
+        <div class="step-title">Продажники в курсі. Завжди.</div>
+        <div class="step-text">Весь ланцюжок — від надходження прайсу до оновлення цін у продажників — займає 15 хвилин і не потребує жодної ручної роботи. Менеджер закупівлі бачить підсумок і може займатись справжніми завданнями.</div>
+        <div style="display:flex;gap:12px;margin-top:16px">
+          <div style="flex:1;background:rgba(39,174,96,0.1);border:1px solid rgba(39,174,96,0.2);border-radius:8px;padding:12px;text-align:center">
+            <div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:var(--green)">15 хв</div>
+            <div style="font-size:11px;color:var(--gray);margin-top:4px">замість 2–7 днів</div>
+          </div>
+          <div style="flex:1;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:12px;text-align:center">
+            <div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:var(--gold)">100%</div>
+            <div style="font-size:11px;color:var(--gray);margin-top:4px">актуальних цін</div>
+          </div>
+          <div style="flex:1;background:rgba(52,152,219,0.1);border:1px solid rgba(52,152,219,0.2);border-radius:8px;padding:12px;text-align:center">
+            <div style="font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;color:#3498DB">0 год</div>
+            <div style="font-size:11px;color:var(--gray);margin-top:4px">ручної роботи</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn btn-outline" onclick="resetProcess()">↺ Спочатку</button>
+    <div class="step-counter">Крок <span id="step-num">0</span> з <span>6</span></div>
+    <button class="btn btn-gold" id="btn-next" onclick="nextStep()">Далі →</button>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCREEN 2: DASHBOARD                   -->
+<!-- ═══════════════════════════════════════ -->
+<div class="screen" id="screen-dashboard">
+
+  <div class="dashboard-header">
+    <div>
+      <div class="dashboard-title">Дашборд керівника · <span>Закупівлі</span></div>
+      <div class="dashboard-meta">Меблевий бізнес · 10 магазинів · 100 постачальників</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="time-display">Оновлено: <span id="dash-time">--:--:--</span></div>
+      <div class="live-badge"><div class="live-dot"></div>Система активна</div>
+    </div>
+  </div>
+
+  <div class="dash-controls">
+    <button class="btn btn-gold" onclick="startDashboard()" id="dash-start-btn">▶ Запустити симуляцію</button>
+    <button class="btn btn-outline" onclick="resetDashboard()">↺ Скинути</button>
+    <div class="speed-label">Симуляція показує як система працює протягом дня в прискореному режимі</div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi-card gold">
+      <div class="kpi-label">Оновлено прайсів сьогодні</div>
+      <div class="kpi-value" id="kpi-praises">0</div>
+      <div class="kpi-change up" id="kpi-praises-change">з 100 постачальників</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Позицій оновлено</div>
+      <div class="kpi-value" id="kpi-positions">0</div>
+      <div class="kpi-change up">автоматично</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Час обробки одного прайсу</div>
+      <div class="kpi-value">15 хв</div>
+      <div class="kpi-change up">↓ з 2–7 днів</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Потребують уваги</div>
+      <div class="kpi-value" id="kpi-attention">0</div>
+      <div class="kpi-change">знято з виробництва</div>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <!-- Price feed -->
+    <div class="dash-panel">
+      <div class="panel-header">
+        <div class="panel-title">ОНОВЛЕННЯ ЦІН · РЕАЛЬНИЙ ЧАС</div>
+        <div class="panel-badge gold" id="update-count-badge">0 оновлень</div>
+      </div>
+      <div class="price-header">
+        <span>Постачальник / Товар</span>
+        <span>Стара ціна</span>
+        <span>Нова ціна</span>
+        <span>Статус</span>
+      </div>
+      <div class="price-feed" id="price-feed">
+        <div style="text-align:center;padding:40px;color:var(--gray);font-size:13px;">
+          Запустіть симуляцію щоб побачити оновлення в реальному часі
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="dash-panel">
+      <div class="panel-header">
+        <div class="panel-title">СПОВІЩЕННЯ</div>
+        <div class="panel-badge green" id="notif-count-badge">0 нових</div>
+      </div>
+      <div class="notifs-feed" id="notifs-feed">
+        <div style="text-align:center;padding:30px;color:var(--gray);font-size:12px;">
+          Тут будуть сповіщення команди
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom summary -->
+  <div class="dash-bottom">
+    <div class="summary-stats">
+      <div class="summary-stat">
+        <div class="summary-stat-value" id="sum-time">0 хв</div>
+        <div class="summary-stat-label">Зекономлено часу менеджера</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-stat-value" id="sum-errors">0</div>
+        <div class="summary-stat-label">Помилок у цінах</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-stat-value" id="sum-suppliers">0</div>
+        <div class="summary-stat-label">Постачальників оброблено</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--gray);text-align:right;max-width:280px;line-height:1.6;">
+      Всі продажники бачать актуальні ціни.<br>
+      Жодної ручної роботи з боку закупівлі.
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'dashboard') updateDashTime();
+}
+
+// ═══════════════════════════════════════
+// SCREEN 1: PROCESS ANIMATION
+// ═══════════════════════════════════════
+
+let currentStep = -1;
+const totalSteps = 6;
+
+const stepActions = [
+  () => {
+    // Emails appear
+    setTimeout(() => document.getElementById('email-0').classList.add('appear'), 100);
+    setTimeout(() => document.getElementById('email-1').classList.add('appear'), 300);
+    setTimeout(() => document.getElementById('email-2').classList.add('appear'), 500);
+    setTimeout(() => document.getElementById('email-3').classList.add('appear'), 700);
+  },
+  () => {
+    // Progress bars fill
+    setTimeout(() => {
+      document.getElementById('bar-0').style.width = '100%';
+      document.getElementById('bar-pct-0').textContent = '100%';
+    }, 200);
+    setTimeout(() => {
+      document.getElementById('bar-1').style.width = '100%';
+    }, 600);
+  },
+  () => {},
+  () => {
+    // Price rows appear
+    setTimeout(() => document.getElementById('upd-0').classList.add('appear'), 200);
+    setTimeout(() => document.getElementById('upd-1').classList.add('appear'), 500);
+    setTimeout(() => document.getElementById('upd-2').classList.add('appear'), 800);
+  },
+  () => {
+    // Notifications appear
+    setTimeout(() => document.getElementById('notif-0').classList.add('appear'), 200);
+    setTimeout(() => document.getElementById('notif-1').classList.add('appear'), 600);
+  },
+  () => {}
+];
+
+function nextStep() {
+  currentStep++;
+  if (currentStep >= totalSteps) {
+    currentStep = totalSteps - 1;
+    return;
+  }
+
+  // Update step counter
+  document.getElementById('step-num').textContent = currentStep + 1;
+
+  // Update nodes
+  for (let i = 0; i < totalSteps; i++) {
+    const node = document.getElementById('node-' + i);
+    if (!node) continue;
+    node.classList.remove('active', 'done');
+    if (i < currentStep) node.classList.add('done');
+    else if (i === currentStep) node.classList.add('active');
+  }
+
+  // Update connectors
+  for (let i = 0; i < totalSteps - 1; i++) {
+    const conn = document.getElementById('conn-' + i);
+    if (!conn) continue;
+    conn.classList.remove('flowing');
+    if (i < currentStep) conn.classList.add('flowing');
+  }
+
+  // Update step panel
+  document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+  const panel = document.getElementById('step-' + currentStep);
+  if (panel) panel.classList.add('active');
+
+  // Panel gold border
+  const stepPanel = document.getElementById('step-panel');
+  stepPanel.classList.add('gold-border');
+
+  // Run step action
+  if (stepActions[currentStep]) stepActions[currentStep]();
+
+  // Button state
+  const btn = document.getElementById('btn-next');
+  if (currentStep >= totalSteps - 1) {
+    btn.textContent = 'Завершено ✓';
+    btn.disabled = true;
+  }
+}
+
+function resetProcess() {
+  currentStep = -1;
+  document.getElementById('step-num').textContent = '0';
+  document.getElementById('btn-next').textContent = 'Далі →';
+  document.getElementById('btn-next').disabled = false;
+
+  for (let i = 0; i < totalSteps; i++) {
+    const node = document.getElementById('node-' + i);
+    if (node) node.classList.remove('active', 'done');
+    const conn = document.getElementById('conn-' + i);
+    if (conn) conn.classList.remove('flowing');
+  }
+
+  document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-panel').classList.remove('gold-border');
+
+  // Reset visuals
+  ['email-0','email-1','email-2','email-3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('appear');
+  });
+  ['bar-0','bar-1'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.width = '0%';
+  });
+  const pct = document.getElementById('bar-pct-0');
+  if (pct) pct.textContent = '0%';
+  ['upd-0','upd-1','upd-2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('appear');
+  });
+  ['notif-0','notif-1'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('appear');
+  });
+}
+
+// ═══════════════════════════════════════
+// SCREEN 2: DASHBOARD
+// ═══════════════════════════════════════
+
+const suppliers = [
+  'Меблі Прем\'єр','ТОВ Форест','Євростиль','Комфорт UA','WoodLine',
+  'Kraft Меблі','Елегант','StyleHome','Дніпро-Меблі','ПримаВуд',
+  'Модерн ТОВ','АльфаМебель','ВудАрт','Класик','Орбіта'
+];
+
+const products = [
+  'Диван Комфорт 3М','Ліжко Еліт 160','Крісло Релакс','Шафа Класик 3-дв',
+  'Стіл обідній Модерн','Тумба нічна','Комод 6-шухл','Диван-ліжко Смарт',
+  'Полиця настінна','Стелаж офісний','Ліжко 140х200','Диван кутовий'
+];
+
+function randInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function randFrom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+let dashInterval = null;
+let updateCount = 0;
+let notifCount = 0;
+let praisesCount = 0;
+let positionsCount = 0;
+let attentionCount = 0;
+let timeEconomized = 0;
+let suppliersProcessed = 0;
+
+function updateDashTime() {
+  const now = new Date();
+  document.getElementById('dash-time').textContent =
+    now.toLocaleTimeString('uk-UA');
+}
+
+function addPriceRow() {
+  const feed = document.getElementById('price-feed');
+  if (feed.querySelector('div[style]')) feed.innerHTML = '';
+
+  const sup = randFrom(suppliers);
+  const prod = randFrom(products);
+  const oldPrice = randInt(3000, 25000);
+  const delta = randInt(-15, 25);
+  const newPrice = Math.round(oldPrice * (1 + delta / 100));
+  const isRemoved = Math.random() < 0.08;
+
+  updateCount++;
+  positionsCount += randInt(20, 150);
+  document.getElementById('kpi-positions').textContent = positionsCount.toLocaleString('uk-UA');
+  document.getElementById('update-count-badge').textContent = updateCount + ' оновлень';
+
+  const row = document.createElement('div');
+  row.className = 'price-row new-update';
+
+  const statusHtml = isRemoved
+    ? `<div class="price-status" style="color:var(--red)">⚠ Знято</div>`
+    : `<div class="price-status updated">✓ Оновлено</div>`;
+
+  const newPriceHtml = isRemoved
+    ? `<span class="price-new" style="color:var(--red)">знято</span>`
+    : `<span class="price-new">${newPrice.toLocaleString('uk-UA')}₴</span>`;
+
+  row.innerHTML = `
+    <div>
+      <div class="price-supplier">${sup}</div>
+      <div class="price-product">${prod}</div>
+    </div>
+    <span class="price-old">${oldPrice.toLocaleString('uk-UA')}₴</span>
+    ${newPriceHtml}
+    ${statusHtml}
+  `;
+
+  feed.insertBefore(row, feed.firstChild);
+
+  // Keep max 10 rows
+  while (feed.children.length > 10) feed.removeChild(feed.lastChild);
+
+  if (isRemoved) {
+    attentionCount++;
+    document.getElementById('kpi-attention').textContent = attentionCount;
+    addNotification('warning', '⚠️', `${prod} знято з виробництва`, `${sup} · замовлення неможливі`);
+  }
+}
+
+function addNotification(type, icon, title, text) {
+  const feed = document.getElementById('notifs-feed');
+  if (feed.querySelector('div[style]')) feed.innerHTML = '';
+
+  notifCount++;
+  document.getElementById('notif-count-badge').textContent = notifCount + ' нових';
+
+  const card = document.createElement('div');
+  card.className = `notif-card type-${type}`;
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'});
+
+  card.innerHTML = `
+    <div class="notif-card-icon">${icon}</div>
+    <div class="notif-card-body">
+      <div class="notif-card-title">${title}</div>
+      <div class="notif-card-text">${text}</div>
+    </div>
+    <div class="notif-card-time">${timeStr}</div>
+  `;
+
+  feed.insertBefore(card, feed.firstChild);
+  setTimeout(() => card.classList.add('show'), 50);
+
+  while (feed.children.length > 8) feed.removeChild(feed.lastChild);
+}
+
+function addPraiseNotification() {
+  const sup = randFrom(suppliers);
+  const count = randInt(100, 900);
+  praisesCount++;
+  suppliersProcessed++;
+  timeEconomized += randInt(25, 45);
+
+  document.getElementById('kpi-praises').textContent = praisesCount;
+  document.getElementById('sum-time').textContent = timeEconomized + ' хв';
+  document.getElementById('sum-suppliers').textContent = suppliersProcessed;
+  document.getElementById('sum-errors').textContent = '0';
+
+  addNotification('update', '✅', `Прайс оброблено: ${sup}`, `${count} позицій · автоматично за 15 хв`);
+}
+
+function startDashboard() {
+  document.getElementById('dash-start-btn').disabled = true;
+  document.getElementById('dash-start-btn').textContent = '▶ Симуляція запущена...';
+
+  // Update clock
+  setInterval(updateDashTime, 1000);
+
+  // First batch immediately
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => addPriceRow(), i * 300);
+  }
+  setTimeout(() => addPraiseNotification(), 500);
+  setTimeout(() => addNotification('info', '📊', 'Система активна', 'Моніторинг 100 постачальників'), 1000);
+
+  // Ongoing updates
+  dashInterval = setInterval(() => {
+    addPriceRow();
+    if (Math.random() < 0.3) addPraiseNotification();
+    if (Math.random() < 0.2) addNotification('info', '🔄', `Синхронізація з ${randFrom(suppliers)}`, 'Перевірка наявності товарів');
+  }, 2000);
+}
+
+function resetDashboard() {
+  if (dashInterval) clearInterval(dashInterval);
+  dashInterval = null;
+  updateCount = 0; notifCount = 0; praisesCount = 0;
+  positionsCount = 0; attentionCount = 0;
+  timeEconomized = 0; suppliersProcessed = 0;
+
+  document.getElementById('kpi-praises').textContent = '0';
+  document.getElementById('kpi-positions').textContent = '0';
+  document.getElementById('kpi-attention').textContent = '0';
+  document.getElementById('update-count-badge').textContent = '0 оновлень';
+  document.getElementById('notif-count-badge').textContent = '0 нових';
+  document.getElementById('sum-time').textContent = '0 хв';
+  document.getElementById('sum-errors').textContent = '0';
+  document.getElementById('sum-suppliers').textContent = '0';
+
+  document.getElementById('price-feed').innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray);font-size:13px;">Запустіть симуляцію щоб побачити оновлення в реальному часі</div>`;
+  document.getElementById('notifs-feed').innerHTML = `<div style="text-align:center;padding:30px;color:var(--gray);font-size:12px;">Тут будуть сповіщення команди</div>`;
+
+  document.getElementById('dash-start-btn').disabled = false;
+  document.getElementById('dash-start-btn').textContent = '▶ Запустити симуляцію';
+}
+
+// Init
+resetProcess();
+updateDashTime();
+</script>
+</body>
+</html>
